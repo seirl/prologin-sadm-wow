@@ -1,0 +1,15 @@
+[Unit]
+Description=UDBSync daemon for djraio (collaborative jukebox)
+After=network-online.target
+
+[Service]
+Type=simple
+User=mangos
+Group=mangos
+WorkingDirectory=/home/mangos/run
+ExecStart=/opt/prologin/venv/bin/python /home/mangos/udbsync_mangos.py
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
