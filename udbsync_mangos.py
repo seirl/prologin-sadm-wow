@@ -44,7 +44,7 @@ def callback(users, updates_metadata):
                     user.username = username
                     user.sha_pass_hash = password
                     user.gmlevel = gmlevel
-                    user.expansion = 2
+                    user.expansion = expansion
                 else:
                     user = Account(username=username,
                                    sha_pass_hash=password,
