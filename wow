@@ -4,6 +4,6 @@ set -e
 
 WOWDIR="$HOME/.wow"
 mkdir -p "$WOWDIR"
-ln -sf /opt/wotlk3.3.5a/{*.dll,*.exe,Data} "$WOWDIR"
-test -d "$WOWDIR/WTF" || cp -TR /opt/wotlk3.3.5a/WTF "$WOWDIR/WTF"
+ln -sf /opt/wow-3.3.5a/{*.dll,*.exe,Data} "$WOWDIR"
+test -d "$WOWDIR/WTF" || cp -TR /opt/wow-3.3.5a/WTF "$WOWDIR/WTF"
 WINEDLLOVERRIDES="mscoree,mshtml=" wine "$WOWDIR/Wow.exe"

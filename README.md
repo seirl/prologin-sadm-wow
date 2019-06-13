@@ -7,58 +7,92 @@ This repo explains how to setup World of Warcraft during the Prologin finals.
 You'll need to find a way to retrieve the WoW 3.3.5a client, and put it both on
 misc (to extract maps/vmaps/...) and on rhfs01 (to deploy it to the clients).
 
+The preferred location is `/opt/wow-3.3.5a`.
+
+## CMangos Archlinux package
+
+In the `pkg` folder, run:
+
+    makepkg
+
+Then upload the resulting package on the prologin repo (or `misc` directly).
+
 ## Server
 
 ### MDB
 
 Add the alias "wow" to the misc machine on MDB.
 
-### Prepare the base system
+### MySQL
 
-On the Misc machine, with the user "root":
+On the misc machine, install mysql:
 
-    pacman -Sy mariadb cmake boost
+    pacman -Sy mariadb
     mysql_install_db --user=mysql --basedir=/usr --datadir=/var/lib/mysql
     systemctl enable --now mariadb
     mysql_secure_installation
 
-    useradd -m mangos
-    usermod -G udbsync_public mangos
+### CMangos installation
 
-### CMangos compilation and installation
+Install the cmangos-wotlk-git package:
 
-Change to the mangos user:
+    pacman -S cmangos-wotlk-git
 
-    su mangos
+Extract the maps/vmaps/...:
 
-Then follow the instructions here:
-https://github.com/cmangos/issues/wiki/Installation-Instructions
+    mangos-extract-resources /opt/wow-3.3.5a
 
-### Systemd services
+### Database setup
 
-Copy and start the systemd services from this server:
+Install the database schema:
 
-    for s in wow-mangosd wow-realmd udbsync_mangos; do
-        cp $s.service /etc/systemd/system
-        systemctl enable --now $s
-    done
+    mysql -uroot -p < /usr/share/mangos/sql/create/db_create_mysql.sql
+    cat /usr/share/mangos/sql/base/mangos.sql \
+        /usr/share/mangos/sql/base/dbc/original_data/*.sql \
+        /usr/share/mangos/sql/base/dbc/cmangos_fixes/*.sql |
+            mysql -uroot -p --database=wotlkmangos
+    mysql -uroot -p wotlkcharacters < /usr/share/mangos/sql/base/characters.sql
+    mysql -uroot -p wotlkrealmd < /usr/share/mangos/sql/base/realmd.sql
 
-### Realmlist setup
+Populate the database:
 
-    mysql -u mangos -p wotlkrealmd
-    UPDATE realmlist SET name = 'Prologin', address = 'wow.prolo' WHERE id = 1;
+    git clone git://github.com/cmangos/wotlk-db.git
+    pushd wotlk-db
+    ./InstallFullDB.sh
+    sed -i 's:CORE_PATH.\+$:CORE_PATH="/usr/share/mangos":' InstallFullDB.config
+    ./InstallFullDB.sh
+    popd
 
+You also need to update the realm address and name:
+
+    echo "UPDATE realmlist SET name = 'Prologin', address = 'wow.prolo' WHERE id = 1;" |
+        mysql -u mangos -p wotlkrealmd
+
+### Start the services
+
+You can now enable and start the mangosd and realmd servers:
+
+    systemctl enable --now realmd
+    systemctl enable --now mangosd
+
+### UDBSync
+
+Setup udbsync for mangos:
+
+    cp udbsync_mangos.py /usr/share/mangos
+    cp udbsync_mangos.service /etc/systemd/system
+    systemctl enable --now udbsync_mangos
 
 ## Client
 
 First, on rhfs01, copy the WoW wotlk 3.3.5a client in
-`/export/nfsroot_staging/opt/wotlk3.3.5a/`.
+`/export/nfsroot_staging/opt/wow-3.3.5a/`.
 
 Copy the WTF/Realmlist configuration files, and the wrapper script:
 
-    cp realmlist.wtf /export/nfsroot_staging/opt/wotlk3.3.5a/Data/enUS
-    mkdir -p /export/nfsroot_staging/opt/wotlk3.3.5a/WTF
-    cp Config.wtf /export/nfsroot_staging/opt/wotlk3.3.5a/WTF
+    cp realmlist.wtf /export/nfsroot_staging/opt/wow-3.3.5a/Data/enUS
+    mkdir -p /export/nfsroot_staging/opt/wow-3.3.5a/WTF
+    cp Config.wtf /export/nfsroot_staging/opt/wow-3.3.5a/WTF
     cp wow /export/nfsroot_staging/usr/bin
 
 Then, install the dependencies (you might need to enable multilib in
