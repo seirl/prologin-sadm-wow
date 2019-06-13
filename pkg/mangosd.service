@@ -1,0 +1,16 @@
+[Unit]
+Description=WoW MaNGOS emulator daemon
+After=network-online.target
+
+[Service]
+DynamicUser=yes
+LogsDirectory=mangos/mangosd
+ExecStart=/usr/bin/mangosd -c /etc/mangosd.conf
+Type=simple
+RestartSec=3
+Restart=always
+StandardInput=tty-force
+StandardOutput=journal
+
+[Install]
+WantedBy=multi-user.target

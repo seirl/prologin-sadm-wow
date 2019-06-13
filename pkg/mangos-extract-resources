@@ -1,0 +1,44 @@
+#!/bin/bash
+
+usage() {
+    cat <<EOF
+$0 is a tool to extract resources from a WoW game directory
+without modifying it by using an overlay, and to automatically install them to
+the MaNGOS data directory.
+
+Usage: $0 <WOWDIR> [INSTALLDIR]  -- Extract the resources from WOWDIR
+       $0 -h                     -- Show this usage message
+EOF
+}
+
+if [ "$#" -lt 1 ]; then
+    usage
+    exit 1
+fi
+
+if [ "$( id --user )" -ne 0 ]; then
+    echo "This script must be run as root"
+    exit 1
+fi
+
+wowdir=$( readlink -f "$1" )
+installdir=$( readlink -f "${2:-/usr/share/mangos}" )
+mkdir -p "$installdir"
+
+upper=$( mktemp -d --suffix -wow-overlay-upper )
+work=$( mktemp -d --suffix -wow-overlay-work )
+merge=$( mktemp -d --suffix -wow-overlay-merge )
+
+mount -t overlay overlay "$merge" \
+    -o "lowerdir=$wowdir,upperdir=$upper,workdir=$work"
+
+pushd "$merge" > /dev/null
+cp -r /usr/share/mangos/tools/* .
+bash ExtractResources.sh a
+for t in maps dbc Cameras vmaps mmaps; do
+    cp -r "$upper/$t" "$installdir"
+done
+popd > /dev/null
+
+umount "$merge"
+rm -rf "$upper" "$work" "$merge"

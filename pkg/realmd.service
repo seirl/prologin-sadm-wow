@@ -1,0 +1,14 @@
+[Unit]
+Description=WoW MaNGOS realm daemon
+After=network-online.target
+
+[Service]
+DynamicUser=yes
+LogsDirectory=mangos/realmd
+ExecStart=/usr/bin/realmd -c /etc/realmd.conf
+Type=simple
+RestartSec=3
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

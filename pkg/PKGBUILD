@@ -1,0 +1,73 @@
+# Maintainer: Antoine Pietri <antoine.pietri1@gmail.com>
+
+_gitname=mangos-wotlk
+pkgname=cmangos-wotlk-git
+pkgver=0.17.r4118.g8e173b7cc
+pkgrel=1
+pkgdesc="CMangos: WoW WotLK 3.3.5a emulator"
+arch=('x86_64')
+url="http://cmangos.net/"
+license=('GPL')
+provides=('cmangos')
+depends=('mariadb' 'boost')
+makedepends=('cmake')
+source=("git+ssh://git@github.com/cmangos/${_gitname}"
+        "mangosd.service"
+        "realmd.service"
+        "mangos-extract-resources")
+sha256sums=('SKIP'
+            '3aab953efb2de84f13da8a4dd9d7874f59ebaec7c297ee88803530ef752dea54'
+            '9bcc3f17d63db4a87b59f7e82ac1ae25cd99ffdfa8b299eb9ae6b01ae321e473'
+            '5062a55c9171bcf1076e7e592180015347ee0f5d2791222777f7a5fd685332d0')
+
+pkgver() {
+    cd "${srcdir}/${_gitname}"
+    git describe --long | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+    cd "${srcdir}/${_gitname}"
+    mkdir -p build && cd build
+    CXXFLAGS=-ffile-prefix-map=${srcdir}=/ \
+        cmake .. -DBUILD_EXTRACTORS=1 -DPCH=1 -DDEBUG=0
+    make
+}
+
+package() {
+    cd "${srcdir}/${_gitname}/build"
+    DESTDIR="${pkgdir}" make install
+
+    _datadir="/usr/share/mangos"
+    _logdir="/var/log/mangos"
+    mkdir -p "${pkgdir}/${_datadir}"
+    mkdir -p "${pkgdir}/${_logdir}"
+
+    # CMaNGOS CMakeLists.txt does not allow to properly specify a destination
+    # dir for the tools
+    mv "${pkgdir}/usr/bin/tools" "${pkgdir}/${_datadir}"
+
+    # Rename .dist config files and put them in /etc (instead of /usr/etc)
+    mkdir -p "${pkgdir}/etc"
+    mv "${pkgdir}/usr/etc/mangosd.conf.dist" "${pkgdir}/etc/mangosd.conf"
+    mv "${pkgdir}/usr/etc/realmd.conf.dist" "${pkgdir}/etc/realmd.conf"
+    mv "${pkgdir}/usr/etc/playerbot.conf.dist" "${pkgdir}/etc/playerbot.conf"
+    rmdir "${pkgdir}/usr/etc"
+
+    # Configuration
+    sed -i "s@^DataDir \?=.*\$@DataDir = \"${_datadir}\"@" "${pkgdir}/etc/mangosd.conf"
+    sed -i "s@^LogsDir \?=.*\$@LogsDir = \"${_logdir}/mangosd\"@" "${pkgdir}/etc/mangosd.conf"
+    sed -i "s@^LogsDir \?=.*\$@LogsDir = \"${_logdir}/realmd\"@" "${pkgdir}/etc/realmd.conf"
+
+    # Remove useless tools
+    rm "${pkgdir}/usr/bin/run-mangosd"
+
+    # Install SQL schemas
+    cp -r "${srcdir}/${_gitname}/sql" "${pkgdir}/${_datadir}"
+
+    # Install systemd services
+    install -Dm644 "${srcdir}/mangosd.service" "${pkgdir}/usr/lib/systemd/system/mangosd.service"
+    install -Dm644 "${srcdir}/realmd.service" "${pkgdir}/usr/lib/systemd/system/realmd.service"
+
+    # Install custom extraction wrapper
+    install -Dm755 "${srcdir}/mangos-extract-resources" "${pkgdir}/usr/bin/"
+}
