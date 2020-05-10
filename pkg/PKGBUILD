@@ -2,7 +2,7 @@
 
 _gitname=mangos-wotlk
 pkgname=cmangos-wotlk-git
-pkgver=0.17.r4118.g8e173b7cc
+pkgver=0.17.r5374.g347ef6dae
 pkgrel=1
 pkgdesc="CMangos: WoW WotLK 3.3.5a emulator"
 arch=('x86_64')
@@ -29,7 +29,8 @@ build() {
     cd "${srcdir}/${_gitname}"
     mkdir -p build && cd build
     CXXFLAGS=-ffile-prefix-map=${srcdir}=/ \
-        cmake .. -DBUILD_EXTRACTORS=1 -DPCH=1 -DDEBUG=0
+        cmake .. \
+        -DBUILD_EXTRACTORS=1 -DPCH=1 -DDEBUG=0 -DCMAKE_INSTALL_PREFIX=/usr
     make
 }
 
